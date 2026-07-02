@@ -1,5 +1,5 @@
-const GEMINI_API_KEY = (import.meta.env.VITE_GEMINI_API_KEY || '').replace(/[^\x20-\x7E]/g, '').trim();
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`;
+const GROK_API_KEY = (import.meta.env.VITE_GROK_API_KEY || '').replace(/[^\x20-\x7E]/g, '').trim();
+const GROK_URL = 'https://api.x.ai/v1/chat/completions';
 
 const TECH_KEYWORDS = ['auth', 'авторизац', 'регистрац', 'api', 'база', 'database', 'ai', 'ии', 'фильтр', 'filter', 'поиск', 'search', 'профил', 'profile', 'чат', 'chat', 'аналитик', 'analytics', 'dashboard', 'дашборд', 'уведомлен', 'notification', 'оплат', 'payment', 'карт', 'map', 'тест', 'deploy', 'докер', 'docker', 'кэш', 'cache', 'websocket', 'реалтайм', 'realtime'];
 
@@ -36,7 +36,7 @@ function smartFallbackScore(features, peerScore) {
 }
 
 export async function scoreSubmission(features, peerScore, activeEventText) {
-  if (GEMINI_API_KEY) {
+  if (GROK_API_KEY) {
     const prompt = `Ты строгий судья хакатона. Оцени прогресс команды за 20 минут работы.
 
 Команда сделала:
@@ -54,25 +54,29 @@ export async function scoreSubmission(features, peerScore, activeEventText) {
 {"score": 7.5, "reason": "Причина на русском языке."}`;
 
     try {
-      const response = await fetch(GEMINI_URL, {
+      const response = await fetch(GROK_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROK_API_KEY}`,
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.4 }
+          model: 'grok-3-mini',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.4,
         })
       });
 
       if (response.ok) {
         const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const text = data.choices?.[0]?.message?.content;
         if (text) {
           const clean = text.replace(/```json|```/g, '').trim();
           return JSON.parse(clean);
         }
       }
     } catch (err) {
-      console.error('Gemini failed, using fallback:', err);
+      console.error('Grok failed, using fallback:', err);
     }
   }
 
