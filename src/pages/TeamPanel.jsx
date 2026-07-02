@@ -22,6 +22,8 @@ export default function TeamPanel() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [shareChange, setShareChange] = useState(null);
+  const [screenshot, setScreenshot] = useState(null);
+  const [screenshotPreview, setScreenshotPreview] = useState(null);
   const [needLogin, setNeedLogin] = useState(false);
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -147,14 +149,34 @@ export default function TeamPanel() {
     setPeerSubmitted(submittedMap);
   }
 
+  function handleScreenshotChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setScreenshot(file);
+    setScreenshotPreview(URL.createObjectURL(file));
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     if (!features.trim() || !round) return;
     setLoading(true);
 
+    let screenshotUrl = null;
+    if (screenshot) {
+      const ext = screenshot.name.split('.').pop();
+      const path = `${teamId}/${round.id}_${Date.now()}.${ext}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('screenshots')
+        .upload(path, screenshot, { upsert: true });
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage.from('screenshots').getPublicUrl(path);
+        screenshotUrl = publicUrl;
+      }
+    }
+
     const { data, error } = await supabase
       .from('submissions')
-      .insert({ round_id: round.id, team_id: teamId, features: features.trim() })
+      .insert({ round_id: round.id, team_id: teamId, features: features.trim(), screenshot_url: screenshotUrl })
       .select()
       .single();
 
@@ -286,6 +308,23 @@ export default function TeamPanel() {
                 placeholder="Опишите что ваша команда сделала в этом раунде&#10;&#10;Пример: Добавили AI-ассистента, авторизацию, фильтр товаров, тёмную тему"
                 rows={6}
               />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ color: '#8888aa', fontSize: '13px' }}>
+                  Скриншот проекта (AI проанализирует дизайн)
+                </label>
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  background: '#1a1a28', border: '1px dashed #2a2a3a',
+                  borderRadius: '8px', padding: '12px 16px', cursor: 'pointer',
+                  color: '#8888aa', fontSize: '14px',
+                }}>
+                  📷 {screenshot ? screenshot.name : 'Выбрать скриншот...'}
+                  <input type="file" accept="image/*" onChange={handleScreenshotChange} style={{ display: 'none' }} />
+                </label>
+                {screenshotPreview && (
+                  <img src={screenshotPreview} alt="preview" style={{ borderRadius: '8px', maxHeight: '160px', objectFit: 'cover', border: '1px solid #2a2a3a' }} />
+                )}
+              </div>
               <button type="submit" style={styles.btn} disabled={loading}>
                 {loading ? 'Отправляю...' : 'Отправить заявку →'}
               </button>

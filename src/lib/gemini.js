@@ -35,7 +35,7 @@ function smartFallbackScore(features, peerScore) {
   return { score, reason };
 }
 
-export async function scoreSubmission(features, peerScore, activeEventText) {
+export async function scoreSubmission(features, peerScore, activeEventText, screenshotUrl = null) {
   if (GROK_API_KEY) {
     const prompt = `Ты строгий судья хакатона. Оцени прогресс команды за 20 минут работы.
 
@@ -45,15 +45,23 @@ export async function scoreSubmission(features, peerScore, activeEventText) {
 Оценка других команд: ${peerScore}/10
 Текущий тренд рынка: "${activeEventText}"
 
-Критерии:
-1. Реалистичность (можно ли это сделать за 20 минут?)
-2. Техническая сложность
-3. Соответствие тренду рынка
+Критерии оценки:
+1. Реалистичность — можно ли это реально сделать за 20 минут?
+2. Техническая сложность реализованных фич
+3. Соответствие текущему тренду рынка
+${screenshotUrl ? '4. Качество UI/UX дизайна (оцени по скриншоту)' : ''}
 
 Верни ТОЛЬКО JSON без markdown:
 {"score": 7.5, "reason": "Причина на русском языке."}`;
 
     try {
+      const content = screenshotUrl
+        ? [
+            { type: 'image_url', image_url: { url: screenshotUrl } },
+            { type: 'text', text: prompt },
+          ]
+        : prompt;
+
       const response = await fetch(GROK_URL, {
         method: 'POST',
         headers: {
@@ -61,8 +69,8 @@ export async function scoreSubmission(features, peerScore, activeEventText) {
           'Authorization': `Bearer ${GROK_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'grok-3-mini',
-          messages: [{ role: 'user', content: prompt }],
+          model: screenshotUrl ? 'grok-2-vision-1212' : 'grok-3-mini',
+          messages: [{ role: 'user', content }],
           temperature: 0.4,
         })
       });

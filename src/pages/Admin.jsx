@@ -172,7 +172,7 @@ export default function Admin() {
     // Запускаем AI-оценку параллельно для всех команд
     const scored = await Promise.all(
       submissions.map(sub =>
-        scoreSubmission(sub.features, peerAvgs[sub.id], activeEvent?.card_text || 'Нет активного события')
+        scoreSubmission(sub.features, peerAvgs[sub.id], activeEvent?.card_text || 'Нет активного события', sub.screenshot_url || null)
       )
     );
 
