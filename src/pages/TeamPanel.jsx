@@ -22,15 +22,37 @@ export default function TeamPanel() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [shareChange, setShareChange] = useState(null);
+  const [needLogin, setNeedLogin] = useState(false);
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
 
   useEffect(() => {
     const savedId = localStorage.getItem('mw_team_id');
     if (savedId !== teamId) {
-      navigate('/register');
+      setNeedLogin(true);
       return;
     }
     loadAll();
   }, [teamId]);
+
+  async function handleTeamLogin(e) {
+    e.preventDefault();
+    const { data, error } = await supabase
+      .from('teams')
+      .select('*')
+      .eq('id', teamId)
+      .eq('password', loginPassword)
+      .single();
+    if (data) {
+      localStorage.setItem('mw_team_id', data.id);
+      localStorage.setItem('mw_team_name', data.name);
+      localStorage.setItem('mw_team_password', loginPassword);
+      setNeedLogin(false);
+      loadAll();
+    } else {
+      setLoginError('Неверный пароль');
+    }
+  }
 
   useEffect(() => {
     const channel = supabase
@@ -169,6 +191,30 @@ export default function TeamPanel() {
     });
 
     setPeerSubmitted(prev => ({ ...prev, [submissionId]: true }));
+  }
+
+  if (needLogin) {
+    return (
+      <div style={styles.center}>
+        <div style={{ background: '#12121a', border: '1px solid #2a2a3a', borderRadius: '16px', padding: '40px', width: '100%', maxWidth: '400px' }}>
+          <h2 style={{ color: '#00ff87', fontFamily: 'monospace', margin: '0 0 8px', textAlign: 'center' }}>MarketWars</h2>
+          <p style={{ color: '#8888aa', textAlign: 'center', margin: '0 0 24px', fontSize: '14px' }}>Войдите в панель команды</p>
+          <form onSubmit={handleTeamLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <input
+              type="password"
+              placeholder="Пароль команды"
+              value={loginPassword}
+              onChange={e => setLoginPassword(e.target.value)}
+              style={{ background: '#1a1a28', border: '1px solid #2a2a3a', borderRadius: '8px', color: '#ffffff', padding: '12px 16px', fontSize: '15px', outline: 'none' }}
+            />
+            {loginError && <p style={{ color: '#ff4757', margin: 0, fontSize: '13px' }}>{loginError}</p>}
+            <button type="submit" style={{ background: '#00ff87', color: '#0a0a0f', border: 'none', borderRadius: '8px', padding: '14px', fontSize: '15px', fontWeight: 700, cursor: 'pointer' }}>
+              Войти →
+            </button>
+          </form>
+        </div>
+      </div>
+    );
   }
 
   if (!team) {
