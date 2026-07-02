@@ -26,6 +26,7 @@ export default function Admin() {
   const [sharePreview, setSharePreview] = useState([]);
   const [shareConfirming, setShareConfirming] = useState(false);
   const [randomEventPreview, setRandomEventPreview] = useState(null);
+  const [investPreview, setInvestPreview] = useState([]);
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
@@ -250,6 +251,37 @@ export default function Admin() {
     await loadAll();
   }
 
+  function rollInvestments() {
+    if (!teams.length) return setMsg('Нет команд для инвестиций.');
+    const BONUSES = [5, 8, 10, 12, 15, 18, 20, 25];
+    const shuffled = [...teams].sort(() => Math.random() - 0.5);
+    const preview = shuffled.map((team, i) => {
+      const bonus = BONUSES[i % BONUSES.length];
+      const newShares = Math.round(team.shares * (1 + bonus / 100));
+      return { ...team, bonus, newShares, change: newShares - team.shares };
+    });
+    setInvestPreview(preview);
+    setMsg('Предпросмотр инвестиций готов. Подтвердите.');
+  }
+
+  async function confirmInvestments() {
+    if (!investPreview.length || !round) return;
+    await Promise.all(
+      investPreview.map(item =>
+        supabase.from('teams').update({ shares: item.newShares }).eq('id', item.id)
+      )
+    );
+    await Promise.all(
+      investPreview.map(item =>
+        supabase.from('share_history').insert({ team_id: item.id, round_id: round.id, value: item.newShares })
+      )
+    );
+    investPreview.forEach(item => log(`💰 ${item.name} получила инвестицию +${item.bonus}% (+${item.change} акций)`));
+    setInvestPreview([]);
+    setMsg('Инвестиции применены!');
+    await loadAll();
+  }
+
   async function triggerScheduledEvent(ev) {
     if (!game) return;
     const { error } = await supabase.from('market_events').insert({
@@ -463,6 +495,40 @@ export default function Admin() {
                     <span style={{ color: item.change >= 0 ? '#00ff87' : '#ff4757', marginLeft: '6px', fontSize: '12px' }}>
                       {item.change >= 0 ? '+' : ''}{item.change}
                     </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={styles.section}>
+          <h3 style={styles.sectionTitle}>💰 Индивидуальные инвестиции</h3>
+          <p style={{ color: '#8888aa', fontSize: '13px', margin: '0 0 12px' }}>
+            Каждой команде выпадает случайный бонус — у всех разный.
+          </p>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <button style={{ ...styles.btn, background: '#ffe66d', color: '#0a0a0f' }} onClick={rollInvestments}>
+              🎰 Разыграть инвестиции
+            </button>
+            {investPreview.length > 0 && (
+              <button style={styles.btn} onClick={confirmInvestments}>
+                ✓ Подтвердить
+              </button>
+            )}
+          </div>
+          {investPreview.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {investPreview.map(item => (
+                <div key={item.id} style={{ ...styles.resultCard, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.color, display: 'inline-block' }} />
+                    <span style={{ color: '#ffffff' }}>{item.name}</span>
+                  </div>
+                  <div style={{ fontFamily: 'monospace', textAlign: 'right' }}>
+                    <span style={{ color: '#ffe66d', fontWeight: 700 }}>+{item.bonus}%</span>
+                    <span style={{ color: '#8888aa', margin: '0 6px' }}>→</span>
+                    <span style={{ color: '#00ff87' }}>+{item.change} акций</span>
                   </div>
                 </div>
               ))}
