@@ -19,7 +19,7 @@ export const RANDOM_EVENTS = [
   { card_text: "Новый закон обязывает все платформы иметь поиск и фильтрацию.", effect_type: "feature_boost", effect_target: "filter", effect_percent: 30, is_random: true },
   { card_text: "День инвестора! Все команды представляют прогресс. Рынок растёт.", effect_type: "global_rise", effect_target: null, effect_percent: 15, is_random: true },
   { card_text: "Нехватка кадров. Команды с системой авторизации привлекают лучших разработчиков.", effect_type: "feature_boost", effect_target: "auth", effect_percent: 20, is_random: true },
-  { card_text: "Заморозка рынка. Инвесторы наблюдают. В этом раунде значимых изменений нет.", effect_type: "none", effect_target: null, effect_percent: 0, is_random: true },
+  { card_text: "Заморозка рынка. Инвесторы осторожны, но самые стабильные проекты держатся.", effect_type: "global_drop", effect_target: null, effect_percent: -5, is_random: true },
   { card_text: "Слухи о поглощении. Инвесторы вкладываются в самые перспективные команды.", effect_type: "global_rise", effect_target: null, effect_percent: 20, is_random: true },
   { card_text: "Глобальный экономический спад. Все технологические акции падают.", effect_type: "global_drop", effect_target: null, effect_percent: -30, is_random: true },
 ];

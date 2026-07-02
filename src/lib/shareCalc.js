@@ -6,24 +6,24 @@ export function calculateNewShares(currentShares, aiScore, peerScore, activeEven
   const features = teamFeatures.toLowerCase();
 
   if (activeEvent) {
+    const pct = Math.abs(activeEvent.effect_percent) / 100;
+    const hasFeature = activeEvent.effect_target && features.includes(activeEvent.effect_target.toLowerCase());
+
     switch (activeEvent.effect_type) {
       case 'global_drop':
-        eventMultiplier = 1 - (Math.abs(activeEvent.effect_percent) / 100);
+        eventMultiplier = 1 - pct;
         break;
       case 'global_rise':
-        eventMultiplier = 1 + (activeEvent.effect_percent / 100);
+        eventMultiplier = 1 + pct;
         break;
       case 'feature_boost':
-        if (activeEvent.effect_target && features.includes(activeEvent.effect_target.toLowerCase())) {
-          eventMultiplier = 1 + (activeEvent.effect_percent / 100);
-        }
+        // Есть фича — полный буст. Нет фичи — небольшое падение (упустили тренд)
+        eventMultiplier = hasFeature ? 1 + pct : 1 - pct * 0.3;
         break;
       case 'feature_drop':
-        if (activeEvent.effect_target && features.includes(activeEvent.effect_target.toLowerCase())) {
-          eventMultiplier = 1 - (Math.abs(activeEvent.effect_percent) / 100);
-        }
+        // Есть фича — падение. Нет фичи — небольшой рост (конкуренты пострадали)
+        eventMultiplier = hasFeature ? 1 - pct : 1 + pct * 0.2;
         break;
-      case 'none':
       default:
         eventMultiplier = 1.0;
     }
