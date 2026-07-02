@@ -5,20 +5,17 @@ const COLORS = ['#00ff87', '#ff6b6b', '#4ecdc4', '#ffe66d', '#a78bfa', '#fb923c'
 export default function StockChart({ teams, shareHistory }) {
   const rounds = [...new Set(shareHistory.map(h => h.round_number))].sort((a, b) => a - b);
 
-  const chartData = rounds.map(round => {
+  const initial = { round: 'Старт' };
+  teams.forEach(team => { initial[team.name] = 100; });
+
+  const chartData = [initial, ...rounds.map(round => {
     const point = { round: `R${round}` };
     teams.forEach(team => {
       const entry = shareHistory.find(h => h.team_id === team.id && h.round_number === round);
-      if (entry) point[team.name] = entry.value;
+      point[team.name] = entry ? entry.value : null;
     });
     return point;
-  });
-
-  if (chartData.length === 0 && teams.length > 0) {
-    const initial = { round: 'Start' };
-    teams.forEach(team => { initial[team.name] = 100; });
-    chartData.push(initial);
-  }
+  })];
 
   return (
     <ResponsiveContainer width="100%" height="100%">

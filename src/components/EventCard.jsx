@@ -21,9 +21,9 @@ export default function EventCard({ event, compact = false }) {
   const icon = isNegative ? '📉' : isPositive ? '📈' : '📊';
 
   const effectLabel = () => {
-    if (isNeutral) return 'No market effect';
+    if (isNeutral) return 'Нет рыночного эффекта';
     const sign = isPositive ? '+' : '';
-    const scope = event.effect_target ? `Teams with "${event.effect_target}"` : 'All teams';
+    const scope = event.effect_target ? `Команды с "${event.effect_target}"` : 'Все команды';
     return `${scope}: ${sign}${event.effect_percent}%`;
   };
 
