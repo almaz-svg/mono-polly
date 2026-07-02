@@ -7,7 +7,8 @@ export default function RoundTimer({ startedAt, durationMinutes = 20, large = fa
     if (!startedAt) return;
 
     const tick = () => {
-      const start = new Date(startedAt).getTime();
+      const raw = startedAt.endsWith('Z') || startedAt.includes('+') ? startedAt : startedAt + 'Z';
+      const start = new Date(raw).getTime();
       const end = start + durationMinutes * 60 * 1000;
       const now = Date.now();
       const remaining = Math.max(0, Math.floor((end - now) / 1000));
