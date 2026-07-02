@@ -326,8 +326,13 @@ export default function Admin() {
       <div style={styles.grid}>
         <div style={styles.section}>
           <h3 style={styles.sectionTitle}>Управление игрой</h3>
-          {!game ? (
-            <button style={styles.btn} onClick={createGame}>Создать новую игру</button>
+          {(!game || game.status === 'finished') ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {game?.status === 'finished' && (
+                <p style={{ color: '#8888aa', fontSize: '13px', margin: 0 }}>Предыдущая игра завершена.</p>
+              )}
+              <button style={styles.btn} onClick={createGame}>Создать новую игру</button>
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={styles.statusRow}>
