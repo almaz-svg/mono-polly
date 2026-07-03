@@ -191,7 +191,7 @@ export default function TeamPanel() {
 
   async function handlePeerScore(submissionId) {
     const score = peerScores[submissionId];
-    if (!score || score < 1 || score > 10) return;
+    if (!score || score < 3 || score > 10) return;
 
     // Проверяем что ещё не оценивали
     const { data: existing } = await supabase
@@ -340,6 +340,9 @@ export default function TeamPanel() {
       ) : round?.status === 'scoring' ? (
         <div>
           <p style={styles.sectionLabel}>Оцените конкурентов (1–10)</p>
+          <p style={{ color: '#8888aa', fontSize: '12px', margin: '-4px 0 10px', background: '#1a1a28', borderRadius: '6px', padding: '8px 12px', border: '1px solid #2a2a3a' }}>
+            📋 Правила: минимальная оценка — <b style={{ color: '#ffe66d' }}>3</b>, максимальная — <b style={{ color: '#00ff87' }}>10</b>. Оценки ниже 3 не принимаются.
+          </p>
           {peerTargets.length === 0 ? (
             <p style={{ color: '#8888aa' }}>Другие команды ещё не сдали заявки.</p>
           ) : (
@@ -354,19 +357,25 @@ export default function TeamPanel() {
                   {peerSubmitted[sub.id] ? (
                     <p style={{ color: '#00ff87', fontSize: '13px', margin: 0 }}>✓ Оценка отправлена: {peerScores[sub.id] || '?'}/10</p>
                   ) : (
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                       <input
                         type="number"
-                        min={1}
+                        min={3}
                         max={10}
                         style={styles.scoreInput}
-                        placeholder="1–10"
+                        placeholder="3–10"
                         value={peerScores[sub.id] || ''}
-                        onChange={e => setPeerScores(prev => ({ ...prev, [sub.id]: e.target.value }))}
+                        onChange={e => {
+                          const v = Math.min(10, Math.max(3, parseInt(e.target.value) || 3));
+                          setPeerScores(prev => ({ ...prev, [sub.id]: v }));
+                        }}
                       />
                       <button style={styles.smallBtn} onClick={() => handlePeerScore(sub.id)}>
                         Отправить оценку
                       </button>
+                      {peerScores[sub.id] < 3 && (
+                        <span style={{ color: '#ff4757', fontSize: '12px' }}>Минимум 3</span>
+                      )}
                     </div>
                   )}
                 </div>
