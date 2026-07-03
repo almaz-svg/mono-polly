@@ -99,6 +99,47 @@ export default function Dashboard() {
 
   const sorted = [...teams].sort((a, b) => b.shares - a.shares);
 
+  if (game?.status === 'finished' && sorted.length > 0) {
+    const medals = ['🥇', '🥈', '🥉'];
+    return (
+      <div style={{ ...styles.container, alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', maxWidth: '700px', width: '100%' }}>
+          <h1 style={{ color: '#00ff87', fontFamily: 'monospace', fontSize: '48px', fontWeight: 700, margin: '0 0 8px', letterSpacing: '4px' }}>
+            MarketWars
+          </h1>
+          <p style={{ color: '#8888aa', fontSize: '20px', margin: '0 0 48px' }}>Игра завершена — итоговые результаты</p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {sorted.map((team, i) => (
+              <div key={team.id} style={{
+                background: i === 0 ? 'rgba(255,230,109,0.08)' : '#12121a',
+                border: `2px solid ${i === 0 ? '#ffe66d' : i === 1 ? '#8888aa' : i === 2 ? '#fb923c' : '#2a2a3a'}`,
+                borderRadius: '16px',
+                padding: '24px 32px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '20px',
+                transition: 'transform 0.2s',
+              }}>
+                <span style={{ fontSize: i < 3 ? '40px' : '24px', minWidth: '48px' }}>
+                  {i < 3 ? medals[i] : `#${i + 1}`}
+                </span>
+                <span style={{ width: '14px', height: '14px', borderRadius: '50%', background: team.color, display: 'inline-block', flexShrink: 0 }} />
+                <span style={{ color: '#ffffff', fontWeight: 700, fontSize: i === 0 ? '28px' : '20px', flex: 1, textAlign: 'left', fontFamily: 'monospace' }}>
+                  {team.name}
+                </span>
+                <span style={{ color: i === 0 ? '#ffe66d' : '#00ff87', fontFamily: 'monospace', fontSize: i === 0 ? '36px' : '24px', fontWeight: 700 }}>
+                  {team.shares}
+                </span>
+                <span style={{ color: '#8888aa', fontSize: '14px' }}>акций</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -155,6 +196,17 @@ export default function Dashboard() {
         <div style={styles.rightPanel}>
           <p style={styles.panelLabel}>Таблица лидеров</p>
           <Leaderboard teams={teams} prevShares={prevShares} />
+          <div style={{ marginTop: '16px', background: '#12121a', border: '1px solid #2a2a3a', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
+            <p style={{ ...styles.panelLabel, marginBottom: '10px' }}>Присоединиться</p>
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(window.location.origin + '/register')}&bgcolor=12121a&color=00ff87&margin=8`}
+              alt="QR"
+              style={{ borderRadius: '8px', width: '120px', height: '120px' }}
+            />
+            <p style={{ color: '#8888aa', fontSize: '11px', margin: '8px 0 0', fontFamily: 'monospace' }}>
+              {window.location.origin}/register
+            </p>
+          </div>
         </div>
       </div>
     </div>
