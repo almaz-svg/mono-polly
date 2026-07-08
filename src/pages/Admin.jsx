@@ -81,18 +81,11 @@ export default function Admin() {
 
   async function handleLogin(e) {
     e.preventDefault();
-    const envPassword = import.meta.env.VITE_ADMIN_PASSWORD || 'marketwars2024';
-    if (loginInput === envPassword) {
-      setAuthed(true);
-      return;
-    }
-    const { data } = await supabase
-      .from('admins')
-      .select('id')
-      .eq('username', 'admin')
-      .eq('password', loginInput)
-      .single();
-    if (data) {
+    const { data } = await supabase.rpc('verify_admin_login', {
+      p_username: 'admin',
+      p_password: loginInput,
+    });
+    if (data === true) {
       setAuthed(true);
     } else {
       setLoginError('Неверный пароль');

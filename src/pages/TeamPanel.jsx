@@ -39,16 +39,13 @@ export default function TeamPanel() {
 
   async function handleTeamLogin(e) {
     e.preventDefault();
-    const { data, error } = await supabase
-      .from('teams')
-      .select('*')
-      .eq('id', teamId)
-      .eq('password', loginPassword)
-      .single();
-    if (data) {
-      localStorage.setItem('mw_team_id', data.id);
-      localStorage.setItem('mw_team_name', data.name);
-      localStorage.setItem('mw_team_password', loginPassword);
+    const { data } = await supabase.rpc('verify_team_login', {
+      p_team_id: teamId,
+      p_password: loginPassword,
+    });
+    if (data && data.length > 0) {
+      localStorage.setItem('mw_team_id', data[0].id);
+      localStorage.setItem('mw_team_name', data[0].name);
       setNeedLogin(false);
       loadAll();
     } else {
@@ -160,33 +157,42 @@ export default function TeamPanel() {
     e.preventDefault();
     if (!features.trim() || !round) return;
     setLoading(true);
+    setMessage('');
 
-    let screenshotUrl = null;
-    if (screenshot) {
-      const ext = screenshot.name.split('.').pop();
-      const path = `${teamId}/${round.id}_${Date.now()}.${ext}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('screenshots')
-        .upload(path, screenshot, { upsert: true });
-      if (!uploadError) {
-        const { data: { publicUrl } } = supabase.storage.from('screenshots').getPublicUrl(path);
-        screenshotUrl = publicUrl;
+    try {
+      let screenshotUrl = null;
+      if (screenshot) {
+        const ext = screenshot.name.split('.').pop();
+        const path = `${teamId}/${round.id}_${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('screenshots')
+          .upload(path, screenshot, { upsert: true });
+        if (uploadError) {
+          console.error('Screenshot upload failed:', uploadError);
+        } else {
+          const { data: { publicUrl } } = supabase.storage.from('screenshots').getPublicUrl(path);
+          screenshotUrl = publicUrl;
+        }
       }
-    }
 
-    const { data, error } = await supabase
-      .from('submissions')
-      .insert({ round_id: round.id, team_id: teamId, features: features.trim(), screenshot_url: screenshotUrl })
-      .select()
-      .single();
+      const { data, error } = await supabase
+        .from('submissions')
+        .insert({ round_id: round.id, team_id: teamId, features: features.trim(), screenshot_url: screenshotUrl })
+        .select()
+        .single();
 
-    if (error) {
-      setMessage('Ошибка: ' + error.message);
-    } else {
-      setSubmission(data);
-      setMessage('Отправлено! Ожидайте конца раунда...');
+      if (error) {
+        setMessage('Ошибка: ' + error.message);
+      } else {
+        setSubmission(data);
+        setMessage('Отправлено! Ожидайте конца раунда...');
+      }
+    } catch (err) {
+      console.error('Submit failed:', err);
+      setMessage('Ошибка отправки: ' + (err?.message || 'неизвестная ошибка. Попробуйте ещё раз.'));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   async function handlePeerScore(submissionId) {
@@ -325,6 +331,7 @@ export default function TeamPanel() {
                   <img src={screenshotPreview} alt="preview" style={{ borderRadius: '8px', maxHeight: '160px', objectFit: 'cover', border: '1px solid #2a2a3a' }} />
                 )}
               </div>
+              {message && <p style={{ color: '#ff4757', fontSize: '13px', margin: 0 }}>{message}</p>}
               <button type="submit" style={styles.btn} disabled={loading}>
                 {loading ? 'Отправляю...' : 'Отправить заявку →'}
               </button>

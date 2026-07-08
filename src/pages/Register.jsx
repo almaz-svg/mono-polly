@@ -17,16 +17,31 @@ export default function Register() {
   const [gameStatus, setGameStatus] = useState('waiting');
   const navigate = useNavigate();
 
+  const takenColors = new Set(teams.map(t => t.color));
+  const selectedColor = takenColors.has(color)
+    ? PRESET_COLORS.find(c => !takenColors.has(c)) || color
+    : color;
+
   useEffect(() => {
     loadData();
   }, []);
 
   async function loadData() {
-    const [{ data: gameData }, { data: teamData }] = await Promise.all([
-      supabase.from('games').select('*').order('created_at', { ascending: false }).limit(1).single(),
-      supabase.from('teams').select('id, name, color').order('created_at'),
-    ]);
-    if (gameData) setGameStatus(gameData.status);
+    const { data: gameData } = await supabase
+      .from('games')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!gameData) return;
+    setGameStatus(gameData.status);
+
+    const { data: teamData } = await supabase
+      .from('teams')
+      .select('id, name, color')
+      .eq('game_id', gameData.id)
+      .order('created_at');
     if (teamData) setTeams(teamData);
   }
 
@@ -59,21 +74,39 @@ export default function Register() {
       return;
     }
 
+    const { data: existingColors } = await supabase
+      .from('teams')
+      .select('color')
+      .eq('game_id', game.id)
+      .eq('color', selectedColor);
+    if (existingColors?.length > 0) {
+      setError('Этот цвет уже занят другой командой. Выберите другой.');
+      setLoading(false);
+      await loadData();
+      return;
+    }
+
     const { data, error: insertError } = await supabase
       .from('teams')
-      .insert({ name: name.trim(), password, color, game_id: game.id })
+      .insert({ name: name.trim(), password, color: selectedColor, game_id: game.id })
       .select()
       .single();
 
     if (insertError) {
-      setError(insertError.message.includes('unique') ? 'Название команды уже занято.' : insertError.message);
+      if (insertError.message.includes('teams_game_color_unique')) {
+        setError('Этот цвет уже занят другой командой. Выберите другой.');
+        await loadData();
+      } else if (insertError.message.includes('unique')) {
+        setError('Название команды уже занято.');
+      } else {
+        setError(insertError.message);
+      }
       setLoading(false);
       return;
     }
 
     localStorage.setItem('mw_team_id', data.id);
     localStorage.setItem('mw_team_name', data.name);
-    localStorage.setItem('mw_team_password', password);
     navigate(`/team/${data.id}`);
   }
 
@@ -123,19 +156,26 @@ export default function Register() {
           <div style={styles.field}>
             <label style={styles.label}>Цвет команды</label>
             <div style={styles.colorGrid}>
-              {PRESET_COLORS.map(c => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  style={{
-                    ...styles.colorBtn,
-                    background: c,
-                    outline: color === c ? `3px solid white` : '3px solid transparent',
-                    transform: color === c ? 'scale(1.15)' : 'scale(1)',
-                  }}
-                />
-              ))}
+              {PRESET_COLORS.map(c => {
+                const taken = takenColors.has(c) && c !== selectedColor;
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    disabled={taken}
+                    title={taken ? 'Цвет уже занят' : undefined}
+                    onClick={() => !taken && setColor(c)}
+                    style={{
+                      ...styles.colorBtn,
+                      background: c,
+                      opacity: taken ? 0.25 : 1,
+                      cursor: taken ? 'not-allowed' : 'pointer',
+                      outline: selectedColor === c ? `3px solid white` : '3px solid transparent',
+                      transform: selectedColor === c ? 'scale(1.15)' : 'scale(1)',
+                    }}
+                  />
+                );
+              })}
             </div>
           </div>
 
