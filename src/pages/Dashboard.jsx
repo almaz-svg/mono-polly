@@ -45,7 +45,7 @@ export default function Dashboard() {
         })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'submissions' },
         async (payload) => {
-          const { data: t } = await supabase.from('teams').select('name').eq('id', payload.new.team_id).single();
+          const { data: t } = await supabase.from('teams').select('name').eq('id', payload.new.team_id).maybeSingle();
           if (t) addFeedItem(`${t.name} сдали заявку`);
         })
       .subscribe();
@@ -69,7 +69,7 @@ export default function Dashboard() {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (!gameData) return;
     setGame(gameData);
@@ -77,8 +77,8 @@ export default function Dashboard() {
     const [{ data: teamsData }, { data: histData }, { data: roundData }, { data: eventData }] = await Promise.all([
       supabase.from('teams').select('*').eq('game_id', gameData.id),
       supabase.from('share_history').select('*, rounds(round_number)').order('recorded_at'),
-      supabase.from('rounds').select('*').eq('game_id', gameData.id).order('round_number', { ascending: false }).limit(1).single(),
-      supabase.from('market_events').select('*').eq('game_id', gameData.id).order('triggered_at', { ascending: false }).limit(1).single(),
+      supabase.from('rounds').select('*').eq('game_id', gameData.id).order('round_number', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('market_events').select('*').eq('game_id', gameData.id).order('triggered_at', { ascending: false }).limit(1).maybeSingle(),
     ]);
 
     if (teamsData) {

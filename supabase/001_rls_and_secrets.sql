@@ -70,7 +70,9 @@ revoke all on admins from anon, authenticated;
 revoke select (password) on teams from anon, authenticated;
 
 -- 3. Hash passwords at rest instead of storing them in plaintext.
-create extension if not exists pgcrypto;
+-- Supabase installs pgcrypto into the `extensions` schema, not `public`,
+-- so every call below is schema-qualified rather than relying on search_path.
+create extension if not exists pgcrypto with schema extensions;
 
 create or replace function hash_team_password()
 returns trigger
@@ -78,7 +80,7 @@ language plpgsql
 as $$
 begin
   if new.password is not null and new.password !~ '^\$2[aby]\$' then
-    new.password := crypt(new.password, gen_salt('bf'));
+    new.password := extensions.crypt(new.password, extensions.gen_salt('bf'));
   end if;
   return new;
 end;
@@ -90,9 +92,9 @@ create trigger trg_hash_team_password
   for each row execute function hash_team_password();
 
 -- One-time backfill for rows created before this migration.
-update teams set password = crypt(password, gen_salt('bf'))
+update teams set password = extensions.crypt(password, extensions.gen_salt('bf'))
   where password is not null and password !~ '^\$2[aby]\$';
-update admins set password = crypt(password, gen_salt('bf'))
+update admins set password = extensions.crypt(password, extensions.gen_salt('bf'))
   where password is not null and password !~ '^\$2[aby]\$';
 
 -- 4. The only way to check a password now: security-definer RPCs that
@@ -106,7 +108,7 @@ set search_path = public
 as $$
   select t.id, t.name, t.color, t.shares, t.game_id
   from teams t
-  where t.id = p_team_id and t.password = crypt(p_password, t.password);
+  where t.id = p_team_id and t.password = extensions.crypt(p_password, t.password);
 $$;
 
 create or replace function verify_admin_login(p_username text, p_password text)
@@ -117,7 +119,7 @@ set search_path = public
 as $$
   select exists (
     select 1 from admins a
-    where a.username = p_username and a.password = crypt(p_password, a.password)
+    where a.username = p_username and a.password = extensions.crypt(p_password, a.password)
   );
 $$;
 

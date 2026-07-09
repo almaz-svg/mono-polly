@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import PasswordInput from '../components/PasswordInput';
 
 const PRESET_COLORS = [
   '#00ff87', '#ff6b6b', '#4ecdc4', '#ffe66d',
@@ -32,7 +33,7 @@ export default function Register() {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (!gameData) return;
     setGameStatus(gameData.status);
@@ -60,7 +61,7 @@ export default function Register() {
       .select('id, status')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (!game) {
       setError('Активная игра не найдена. Попросите администратора создать игру.');
@@ -144,9 +145,8 @@ export default function Register() {
 
           <div style={styles.field}>
             <label style={styles.label}>Пароль (для входа в панель команды)</label>
-            <input
+            <PasswordInput
               style={styles.input}
-              type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="Придумайте пароль команды"

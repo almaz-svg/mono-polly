@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import EventCard from '../components/EventCard';
 import RoundTimer from '../components/RoundTimer';
+import PasswordInput from '../components/PasswordInput';
 
 const STATUS_RU = { waiting: 'Ожидание', active: 'Активен', finished: 'Завершён', scoring: 'Оценка' };
 
@@ -70,7 +71,7 @@ export default function TeamPanel() {
   }
 
   async function loadTeam() {
-    const { data } = await supabase.from('teams').select('*').eq('id', teamId).single();
+    const { data } = await supabase.from('teams').select('*').eq('id', teamId).maybeSingle();
     if (data) {
       setTeam(prev => {
         if (prev) setShareChange(data.shares - prev.shares);
@@ -85,7 +86,7 @@ export default function TeamPanel() {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (!gameData) return;
     setGame(gameData);
@@ -98,7 +99,7 @@ export default function TeamPanel() {
       .eq('game_id', gameData.id)
       .order('round_number', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (roundData) {
       setRound(roundData);
@@ -115,7 +116,7 @@ export default function TeamPanel() {
       .eq('game_id', gid)
       .order('triggered_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
     setActiveEvent(data || null);
   }
 
@@ -125,7 +126,7 @@ export default function TeamPanel() {
       .select('*')
       .eq('round_id', roundId)
       .eq('team_id', teamId)
-      .single();
+      .maybeSingle();
     setSubmission(data || null);
   }
 
@@ -205,7 +206,7 @@ export default function TeamPanel() {
       .select('id')
       .eq('submission_id', submissionId)
       .eq('from_team_id', teamId)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       setPeerSubmitted(prev => ({ ...prev, [submissionId]: true }));
@@ -228,8 +229,7 @@ export default function TeamPanel() {
           <h2 style={{ color: '#00ff87', fontFamily: 'monospace', margin: '0 0 8px', textAlign: 'center' }}>MarketWars</h2>
           <p style={{ color: '#8888aa', textAlign: 'center', margin: '0 0 24px', fontSize: '14px' }}>Войдите в панель команды</p>
           <form onSubmit={handleTeamLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input
-              type="password"
+            <PasswordInput
               placeholder="Пароль команды"
               value={loginPassword}
               onChange={e => setLoginPassword(e.target.value)}

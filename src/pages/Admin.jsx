@@ -5,6 +5,7 @@ import { calculateNewShares } from '../lib/shareCalc';
 import { SCHEDULED_EVENTS, RANDOM_EVENTS } from '../lib/marketEvents';
 import EventCard from '../components/EventCard';
 import RoundTimer from '../components/RoundTimer';
+import PasswordInput from '../components/PasswordInput';
 
 const STATUS_RU = { waiting: 'Ожидание', active: 'Активна', finished: 'Завершена', scoring: 'Оценка' };
 
@@ -53,15 +54,15 @@ export default function Admin() {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (gameData) {
       setGame(gameData);
 
       const [{ data: teamsData }, { data: roundData }, { data: eventData }, { data: usedData }] = await Promise.all([
         supabase.from('teams').select('*').eq('game_id', gameData.id).order('shares', { ascending: false }),
-        supabase.from('rounds').select('*').eq('game_id', gameData.id).order('round_number', { ascending: false }).limit(1).single(),
-        supabase.from('market_events').select('*').eq('game_id', gameData.id).order('triggered_at', { ascending: false }).limit(1).single(),
+        supabase.from('rounds').select('*').eq('game_id', gameData.id).order('round_number', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('market_events').select('*').eq('game_id', gameData.id).order('triggered_at', { ascending: false }).limit(1).maybeSingle(),
         supabase.from('market_events').select('card_text').eq('game_id', gameData.id),
       ]);
 
@@ -321,8 +322,7 @@ export default function Admin() {
         <div style={styles.loginCard}>
           <h2 style={{ color: '#00ff87', margin: '0 0 24px', fontFamily: 'monospace' }}>Вход для администратора</h2>
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input
-              type="password"
+            <PasswordInput
               style={styles.input}
               placeholder="Пароль администратора"
               value={loginInput}
