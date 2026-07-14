@@ -2,7 +2,7 @@
 // Vite dev-server middleware (vite.config.js), so `npm run dev` and a
 // real deploy behave the same way instead of the dev server silently
 // 404-ing on AI scoring.
-const GROK_URL = 'https://api.x.ai/v1/chat/completions';
+const GROK_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 const TECH_KEYWORDS = ['auth', 'авторизац', 'регистрац', 'api', 'база', 'database', 'ai', 'ии', 'фильтр', 'filter', 'поиск', 'search', 'профил', 'profile', 'чат', 'chat', 'аналитик', 'analytics', 'dashboard', 'дашборд', 'уведомлен', 'notification', 'оплат', 'payment', 'карт', 'map', 'тест', 'deploy', 'докер', 'docker', 'кэш', 'cache', 'websocket', 'реалтайм', 'realtime'];
 
@@ -83,7 +83,7 @@ ${screenshotUrl ? '4. Качество UI/UX дизайна (оцени по с�
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: screenshotUrl ? 'grok-2-vision-1212' : 'grok-3-mini',
+          model: screenshotUrl ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'llama-3.3-70b-versatile',
           messages: [{ role: 'user', content }],
           temperature: 0.4,
         })

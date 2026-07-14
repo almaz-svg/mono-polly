@@ -1,3 +1,16 @@
+// marketEvents.js задаёт effect_target одним английским словом (AI, filter,
+// account, menu, auth), а команды описывают фичи по-русски — простое
+// includes() никогда не совпадёт, и feature_boost/feature_drop фактически
+// били одинаково по всем. Список синонимов на случай, если effect_target
+// не совпадает буквально.
+const TARGET_SYNONYMS = {
+  ai: ['ai', 'ии', 'искусственный интеллект', 'нейросет', 'ассистент', 'чат-бот', 'чатбот'],
+  filter: ['filter', 'фильтр', 'сортировк', 'поиск', 'search'],
+  account: ['account', 'аккаунт', 'профил', 'авторизац', 'регистрац', 'логин'],
+  menu: ['menu', 'меню', 'навигац'],
+  auth: ['auth', 'авторизац', 'регистрац', 'логин', 'вход'],
+};
+
 export function calculateNewShares(currentShares, aiScore, peerScore, activeEvent, teamFeatures) {
   const combinedScore = (aiScore * 0.7) + (peerScore * 0.3);
   const scoreMultiplier = ((combinedScore - 5) / 5) * 0.175 + 1.0;
@@ -7,7 +20,9 @@ export function calculateNewShares(currentShares, aiScore, peerScore, activeEven
 
   if (activeEvent) {
     const pct = Math.abs(activeEvent.effect_percent) / 100;
-    const hasFeature = activeEvent.effect_target && features.includes(activeEvent.effect_target.toLowerCase());
+    const targetKey = activeEvent.effect_target ? activeEvent.effect_target.toLowerCase() : null;
+    const synonyms = targetKey ? (TARGET_SYNONYMS[targetKey] || [targetKey]) : [];
+    const hasFeature = synonyms.some(word => features.includes(word));
 
     switch (activeEvent.effect_type) {
       case 'global_drop':

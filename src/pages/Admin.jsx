@@ -137,6 +137,14 @@ export default function Admin() {
     await loadAll();
   }
 
+  async function reopenRound() {
+    if (!round) return;
+    await supabase.from('rounds').update({ status: 'active' }).eq('id', round.id);
+    log(`Раунд ${round.round_number} возвращён в активную фазу`);
+    setMsg('Раунд снова активен — команды могут отправлять заявки.');
+    await loadAll();
+  }
+
   async function finishGame() {
     if (!game) return;
     await supabase.from('games').update({ status: 'finished' }).eq('id', game.id);
@@ -147,39 +155,61 @@ export default function Admin() {
   }
 
   async function runAiScoring() {
-    if (!submissions.length) return setMsg('Нет заявок для оценки.');
+    if (!round) return;
+
+    // React-state `submissions` обновляется через realtime и может на
+    // несколько секунд отставать от реальной базы — именно в этот момент
+    // команды часто досылают последние заявки. Перечитываем напрямую,
+    // чтобы не запускать оценку по устаревшему списку.
+    const { data: freshSubs } = await supabase
+      .from('submissions')
+      .select('*, teams(name, color)')
+      .eq('round_id', round.id);
+    const currentSubs = freshSubs || [];
+
+    if (!currentSubs.length) return setMsg('Нет заявок для оценки.');
+
+    if (currentSubs.length < teams.length) {
+      const missing = teams.length - currentSubs.length;
+      const proceed = window.confirm(
+        `Заявку не сдали ${missing} из ${teams.length} команд. Всё равно запустить оценку?`
+      );
+      if (!proceed) return;
+    }
+
+    setSubmissions(currentSubs);
     setAiLoading(true);
     log('Запуск AI-оценки...');
 
     // Получаем peer-оценки для всех заявок параллельно
     const peerDataArr = await Promise.all(
-      submissions.map(sub =>
+      currentSubs.map(sub =>
         supabase.from('peer_scores').select('score').eq('submission_id', sub.id)
       )
     );
     const peerAvgs = {};
-    submissions.forEach((sub, i) => {
+    currentSubs.forEach((sub, i) => {
       const scores = (peerDataArr[i].data || []).map(p => p.score);
       peerAvgs[sub.id] = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 5;
     });
 
     // Запускаем AI-оценку параллельно для всех команд
     const scored = await Promise.all(
-      submissions.map(sub =>
+      currentSubs.map(sub =>
         scoreSubmission(sub.features, peerAvgs[sub.id], activeEvent?.card_text || 'Нет активного события', sub.screenshot_url || null)
       )
     );
 
     // Сохраняем результаты параллельно
     await Promise.all(
-      submissions.map((sub, i) =>
+      currentSubs.map((sub, i) =>
         supabase.from('submissions')
           .update({ ai_score: scored[i].score, ai_reason: scored[i].reason })
           .eq('id', sub.id)
       )
     );
 
-    const results = submissions.map((sub, i) => {
+    const results = currentSubs.map((sub, i) => {
       log(`Оценка ${sub.teams?.name}: ${scored[i].score}/10`);
       return { ...sub, ai_score: scored[i].score, ai_reason: scored[i].reason, peer_avg: peerAvgs[sub.id] };
     });
@@ -387,6 +417,11 @@ export default function Admin() {
                 {game.status === 'active' && round?.status === 'active' && (
                   <button style={{ ...styles.btn, background: '#ffe66d', color: '#0a0a0f' }} onClick={endRound}>
                     ⏸ Завершить раунд / Начать оценку
+                  </button>
+                )}
+                {game.status === 'active' && round?.status === 'scoring' && (
+                  <button style={{ ...styles.btn, background: '#1a1a28', color: '#ffe66d', border: '1px solid #ffe66d' }} onClick={reopenRound}>
+                    ↩ Вернуть раунд в активную фазу
                   </button>
                 )}
                 {game.status === 'active' && (round?.status === 'scoring' || round?.status === 'finished') && round.round_number < game.total_rounds && (

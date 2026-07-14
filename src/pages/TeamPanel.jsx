@@ -293,6 +293,22 @@ export default function TeamPanel() {
         </div>
       )}
 
+      {round && round.status !== 'active' && (
+        submission ? (
+          <div style={{ ...styles.submittedCard, marginBottom: '16px', padding: '12px 16px' }}>
+            <p style={{ color: '#00ff87', margin: 0, fontSize: '13px', fontWeight: 600 }}>
+              ✓ Заявка этого раунда сохранена — она учтётся в оценке.
+            </p>
+          </div>
+        ) : (
+          <div style={{ ...styles.submittedCard, marginBottom: '16px', padding: '12px 16px', background: 'rgba(255,71,87,0.05)', borderColor: 'rgba(255,71,87,0.3)' }}>
+            <p style={{ color: '#ff4757', margin: 0, fontSize: '13px', fontWeight: 600 }}>
+              ⚠ Вы не сдали заявку в этом раунде — она не попадёт в оценку.
+            </p>
+          </div>
+        )
+      )}
+
       {!game || game.status === 'waiting' ? (
         <div style={styles.waitCard}>
           <p style={{ color: '#8888aa', fontSize: '20px', margin: 0 }}>⏳ Ожидание начала игры...</p>
