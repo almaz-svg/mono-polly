@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { scoreSubmission } from '../lib/gemini';
 import { calculateNewShares } from '../lib/shareCalc';
+import { assignProjects } from '../lib/projectAssign';
 import { SCHEDULED_EVENTS, RANDOM_EVENTS } from '../lib/marketEvents';
 import EventCard from '../components/EventCard';
 import RoundTimer from '../components/RoundTimer';
@@ -60,7 +61,7 @@ export default function Admin() {
       setGame(gameData);
 
       const [{ data: teamsData }, { data: roundData }, { data: eventData }, { data: usedData }] = await Promise.all([
-        supabase.from('teams').select('*').eq('game_id', gameData.id).order('shares', { ascending: false }),
+        supabase.from('teams').select('*, projects(id, key, title, tagline, what_is, key_feature, tasks)').eq('game_id', gameData.id).order('shares', { ascending: false }),
         supabase.from('rounds').select('*').eq('game_id', gameData.id).order('round_number', { ascending: false }).limit(1).maybeSingle(),
         supabase.from('market_events').select('*').eq('game_id', gameData.id).order('triggered_at', { ascending: false }).limit(1).maybeSingle(),
         supabase.from('market_events').select('card_text').eq('game_id', gameData.id),
@@ -111,6 +112,25 @@ export default function Admin() {
       .single();
     setRound(r);
     log('Игра началась — Раунд 1');
+
+    const [{ data: teamsForAssign }, { data: projectsData }] = await Promise.all([
+      supabase.from('teams').select('id, project_id').eq('game_id', game.id),
+      supabase.from('projects').select('*').order('sort_order'),
+    ]);
+    const unassigned = (teamsForAssign || []).filter(t => !t.project_id);
+    if (unassigned.length && projectsData?.length) {
+      const assignment = assignProjects(unassigned.map(t => t.id), projectsData);
+      await Promise.all(
+        Object.entries(assignment).map(([teamId, projectId]) =>
+          // .eq('project_id', null) — CAS-защита: если эта функция случайно
+          // вызовется дважды подряд, вторая попытка не перезапишет уже
+          // назначенный командой проект.
+          supabase.from('teams').update({ project_id: projectId }).eq('id', teamId).is('project_id', null)
+        )
+      );
+      log(`Проекты распределены между ${unassigned.length} командами`);
+    }
+
     setMsg('Игра началась!');
     await loadAll();
   }
@@ -195,23 +215,26 @@ export default function Admin() {
 
     // Запускаем AI-оценку параллельно для всех команд
     const scored = await Promise.all(
-      currentSubs.map(sub =>
-        scoreSubmission(sub.features, peerAvgs[sub.id], activeEvent?.card_text || 'Нет активного события', sub.screenshot_url || null)
-      )
+      currentSubs.map(sub => {
+        const team = teams.find(t => t.id === sub.team_id);
+        const p = team?.projects;
+        const project = p ? { title: p.title, whatIs: p.what_is, keyFeature: p.key_feature, tasks: p.tasks } : null;
+        return scoreSubmission(sub.features, peerAvgs[sub.id], activeEvent?.card_text || 'Нет активного события', sub.screenshot_url || null, project);
+      })
     );
 
     // Сохраняем результаты параллельно
     await Promise.all(
       currentSubs.map((sub, i) =>
         supabase.from('submissions')
-          .update({ ai_score: scored[i].score, ai_reason: scored[i].reason })
+          .update({ ai_score: scored[i].score, ai_reason: scored[i].reason, ai_breakdown: scored[i].breakdown || null })
           .eq('id', sub.id)
       )
     );
 
     const results = currentSubs.map((sub, i) => {
       log(`Оценка ${sub.teams?.name}: ${scored[i].score}/10`);
-      return { ...sub, ai_score: scored[i].score, ai_reason: scored[i].reason, peer_avg: peerAvgs[sub.id] };
+      return { ...sub, ai_score: scored[i].score, ai_reason: scored[i].reason, ai_breakdown: scored[i].breakdown, peer_avg: peerAvgs[sub.id] };
     });
 
     setAiResults(results);
@@ -443,7 +466,7 @@ export default function Admin() {
             <table style={styles.table}>
               <thead>
                 <tr>
-                  {['Команда', 'Акции', 'AI Оценка', 'Сдано', 'Цвет'].map(h => (
+                  {['Команда', 'Проект', 'Акции', 'AI Оценка', 'Сдано', 'Цвет'].map(h => (
                     <th key={h} style={styles.th}>{h}</th>
                   ))}
                 </tr>
@@ -454,6 +477,7 @@ export default function Admin() {
                   return (
                     <tr key={t.id}>
                       <td style={styles.td}>{t.name}</td>
+                      <td style={{ ...styles.td, fontSize: '12px', color: '#8888aa' }}>{t.projects?.title || '—'}</td>
                       <td style={{ ...styles.td, fontFamily: 'monospace', color: '#00ff87' }}>{t.shares}</td>
                       <td style={styles.td}>{sub?.ai_score ? `${sub.ai_score}/10` : '—'}</td>
                       <td style={styles.td}>{sub ? '✓' : '—'}</td>
@@ -486,6 +510,22 @@ export default function Admin() {
                     <span style={{ color: '#00ff87', fontFamily: 'monospace' }}>{r.ai_score}/10</span>
                   </div>
                   <p style={{ color: '#8888aa', fontSize: '12px', margin: '4px 0 0' }}>{r.ai_reason}</p>
+                  {r.ai_breakdown && (
+                    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #2a2a3a' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '11px', fontFamily: 'monospace', color: '#8888aa' }}>
+                        <span>Понимание: <b style={{ color: '#cccccc' }}>{r.ai_breakdown.understanding}</b></span>
+                        <span>Оригинальность: <b style={{ color: '#cccccc' }}>{r.ai_breakdown.originality}</b></span>
+                        <span>Реализуемость: <b style={{ color: '#cccccc' }}>{r.ai_breakdown.feasibility}</b></span>
+                        <span>Монетизация: <b style={{ color: '#cccccc' }}>{r.ai_breakdown.monetization}</b></span>
+                      </div>
+                      {r.ai_breakdown.strongPoint && (
+                        <p style={{ color: '#00ff87', fontSize: '11px', margin: '6px 0 0' }}>+ {r.ai_breakdown.strongPoint}</p>
+                      )}
+                      {r.ai_breakdown.weakPoint && (
+                        <p style={{ color: '#ff6b6b', fontSize: '11px', margin: '2px 0 0' }}>− {r.ai_breakdown.weakPoint}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

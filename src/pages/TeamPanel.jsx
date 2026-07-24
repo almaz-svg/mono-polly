@@ -71,7 +71,11 @@ export default function TeamPanel() {
   }
 
   async function loadTeam() {
-    const { data } = await supabase.from('teams').select('*').eq('id', teamId).maybeSingle();
+    const { data } = await supabase
+      .from('teams')
+      .select('*, projects(title, tagline, what_is, key_feature, tasks)')
+      .eq('id', teamId)
+      .maybeSingle();
     if (data) {
       setTeam(prev => {
         if (prev) setShareChange(data.shares - prev.shares);
@@ -286,6 +290,20 @@ export default function TeamPanel() {
         </div>
       )}
 
+      {team.projects && (
+        <div style={styles.projectCard}>
+          <p style={styles.sectionLabel}>Ваш проект</p>
+          <p style={{ color: '#00ff87', fontWeight: 700, fontSize: '16px', margin: '0 0 6px' }}>{team.projects.title}</p>
+          <p style={{ color: '#cccccc', fontSize: '13px', margin: '0 0 10px' }}>{team.projects.tagline}</p>
+          <p style={{ color: '#8888aa', fontSize: '12px', fontWeight: 600, margin: '0 0 4px' }}>Ключевая фишка</p>
+          <p style={{ color: '#cccccc', fontSize: '13px', margin: '0 0 10px' }}>{team.projects.key_feature}</p>
+          <p style={{ color: '#8888aa', fontSize: '12px', fontWeight: 600, margin: '0 0 4px' }}>Что развивать</p>
+          <ul style={{ color: '#cccccc', fontSize: '13px', margin: 0, paddingLeft: '18px' }}>
+            {team.projects.tasks.split('\n').map((line, i) => <li key={i}>{line}</li>)}
+          </ul>
+        </div>
+      )}
+
       {activeEvent && (
         <div style={{ marginBottom: '16px' }}>
           <p style={styles.sectionLabel}>Текущее рыночное событие</p>
@@ -419,6 +437,22 @@ export default function TeamPanel() {
               {submission.ai_reason && (
                 <p style={{ color: '#8888aa', fontSize: '13px' }}>{submission.ai_reason}</p>
               )}
+              {submission.ai_breakdown && (
+                <div style={{ marginTop: '10px', textAlign: 'left', background: '#1a1a28', border: '1px solid #2a2a3a', borderRadius: '8px', padding: '12px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '12px', fontFamily: 'monospace', color: '#8888aa' }}>
+                    <span>Понимание кейса: <b style={{ color: '#cccccc' }}>{submission.ai_breakdown.understanding}</b></span>
+                    <span>Оригинальность: <b style={{ color: '#cccccc' }}>{submission.ai_breakdown.originality}</b></span>
+                    <span>Реализуемость: <b style={{ color: '#cccccc' }}>{submission.ai_breakdown.feasibility}</b></span>
+                    <span>Монетизация: <b style={{ color: '#cccccc' }}>{submission.ai_breakdown.monetization}</b></span>
+                  </div>
+                  {submission.ai_breakdown.strongPoint && (
+                    <p style={{ color: '#00ff87', fontSize: '12px', margin: '8px 0 0' }}>+ {submission.ai_breakdown.strongPoint}</p>
+                  )}
+                  {submission.ai_breakdown.weakPoint && (
+                    <p style={{ color: '#ff6b6b', fontSize: '12px', margin: '2px 0 0' }}>− {submission.ai_breakdown.weakPoint}</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -453,6 +487,7 @@ const styles = {
     marginBottom: '16px',
   },
   sectionLabel: { color: '#8888aa', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 10px' },
+  projectCard: { background: '#12121a', border: '1px solid #2a2a3a', borderRadius: '12px', padding: '16px 20px', marginBottom: '16px' },
   waitCard: { background: '#12121a', border: '1px solid #2a2a3a', borderRadius: '12px', padding: '32px', textAlign: 'center' },
   form: { display: 'flex', flexDirection: 'column', gap: '12px' },
   textarea: {

@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { features, peerScore, activeEventText, screenshotUrl } = req.body || {};
+  const { features, peerScore, activeEventText, screenshotUrl, project } = req.body || {};
   if (!features || typeof features !== 'string') {
     res.status(400).json({ error: 'features is required' });
     return;
@@ -21,7 +21,8 @@ export default async function handler(req, res) {
     Number(peerScore) || 5,
     activeEventText || 'Нет активного события',
     screenshotUrl || null,
-    GROK_API_KEY
+    GROK_API_KEY,
+    project || null
   );
   res.status(200).json(result);
 }

@@ -20,7 +20,7 @@ function apiScoreDevMiddleware(mode) {
         req.on('data', chunk => { body += chunk; });
         req.on('end', async () => {
           try {
-            const { features, peerScore, activeEventText, screenshotUrl } = JSON.parse(body || '{}');
+            const { features, peerScore, activeEventText, screenshotUrl, project } = JSON.parse(body || '{}');
             if (!features || typeof features !== 'string') {
               res.writeHead(400, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify({ error: 'features is required' }));
@@ -31,7 +31,8 @@ function apiScoreDevMiddleware(mode) {
               Number(peerScore) || 5,
               activeEventText || 'Нет активного события',
               screenshotUrl || null,
-              apiKey
+              apiKey,
+              project || null
             );
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(result));
